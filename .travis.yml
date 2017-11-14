@@ -1,21 +1,28 @@
+sudo: required
+
 language: go
-# sudo: false
-go:
-  - 1.7
-  - tip
+go: 1.8
 
-env:
-  global:
-    - GOARCH=amd64
-
-branches:
-  only:
-    - master
+services:
+  - docker
 
 before_install:
-  - sudo apt-get -qq update
-  - sudo apt-get install -y libmagic-dev
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+  - sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+  - sudo apt-get update
+  - sudo apt-get -y install docker-ce
+  - docker --version
+  - docker pull blacktop/elasticsearch
+  - sudo sysctl -w vm.max_map_count=262144
 
-install: make deps
+install:
+  - make setup
+  - go build -o malice-travis
+
 script:
-  - go build -o new_malice
+  - make test
+  - ./malice-travis -D elk
+  - go test -race -coverprofile=coverage.txt -covermode=atomic
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)

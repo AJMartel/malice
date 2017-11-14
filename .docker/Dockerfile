@@ -1,17 +1,18 @@
-FROM gliderlabs/alpine:edge
+FROM alpine:3.6
 
-MAINTAINER blacktop, https://github.com/blacktop
+LABEL maintainer "https://github.com/blacktop"
 
-RUN apk-install file tini
-RUN apk-install -t build-deps go git mercurial build-base file-dev \
-  && set -x \ 
+RUN apk add --no-cache file tini
+RUN apk add --no-cache -t build-deps go git mercurial build-base gcc file-dev libc-dev \
+  && set -x \
   && echo "Building malice Go binary..." \
   && git clone https://github.com/maliceio/malice.git /go/src/github.com/maliceio/malice \
   && cd /go/src/github.com/maliceio/malice \
+  # fix git redirects
+  && git config --global http.https://gopkg.in.followRedirects true \
   && export GOPATH=/go \
   && go version \
-  && go get \
-  && go build -ldflags "-X main.Version=$(cat VERSION) -X main.BuildTime=$(date -u +%Y%m%d)" -o /bin/malice \
+  && CGO_ENABLED=0 go build -i -a -installsuffix cgo -ldflags "-X main.Version=$(cat VERSION) -X main.BuildTime=$(date -u +%Y%m%d)" -o /bin/malice \
   && echo "Copy malice config files..." \
   && mkdir /malice \
   && cp /go/src/github.com/maliceio/malice/config/config.toml /malice \
@@ -30,5 +31,4 @@ EXPOSE 80 443
 WORKDIR /malice/samples
 
 ENTRYPOINT ["/sbin/tini","--","malice"]
-
 CMD ["--help"]

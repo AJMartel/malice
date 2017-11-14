@@ -12,14 +12,20 @@ import (
 	"github.com/maliceio/malice/commands"
 	"github.com/maliceio/malice/config"
 	"github.com/maliceio/malice/malice/logger"
+	"github.com/maliceio/malice/malice/maldirs"
 	"github.com/maliceio/malice/plugins"
-	"github.com/maliceio/malice/version"
+)
+
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
 )
 
 func init() {
-	logger.Init()
+	logger.Init(version)
 	setDebugOutputLevel()
-	config.Load()
+	config.Load(version)
 	plugins.Load()
 }
 
@@ -44,7 +50,9 @@ func setDebugOutputLevel() {
 }
 
 // Init initializes Malice
-func Init() {}
+func Init() {
+	maldirs.MakeDirs()
+}
 
 func main() {
 	log.Debugf("Using %d PROCS", runtime.NumCPU())
@@ -63,7 +71,7 @@ func main() {
 	app.Commands = commands.Commands
 	app.CommandNotFound = commands.CmdNotFound
 	app.Usage = "Open Source Malware Analysis Framework"
-	app.Version = version.GetHumanVersion()
+	app.Version = fmt.Sprintf("%v, commit %v, built at %v", version, commit, date)
 	app.Copyright = "Copyright (c) 2013 - 2016 'blacktop' Joshua Maine"
 	// app.EnableBashCompletion = true
 
@@ -77,5 +85,7 @@ func main() {
 		},
 	}
 
-	app.Run(os.Args)
+	if err := app.Run(os.Args); err != nil {
+		log.Fatalln(err)
+	}
 }

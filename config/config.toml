@@ -1,4 +1,4 @@
-# Copyright (c) 2013 - 2016 blacktop Joshua Maine, All Rights Reserved.
+# Copyright (c) 2013 - 2017 blacktop Joshua Maine, All Rights Reserved.
 # See LICENSE for license information.
 
 #######################################################################
@@ -6,12 +6,11 @@
 #######################################################################
 
 title = "Malice Runtime Configuration"
+version = "v0.3.11"
 
 [author]
   name = "blacktop"
-  # organization = "GitHub"
-  # bio = "GitHub Cofounder & CEO\nLikes tater tots and beer."
-  # dob = 1979-05-27T07:32:00Z # First class dates? Why not?
+  organization = "MaliceIO"
 
 [web]
   url = "0.0.0.0:80"
@@ -24,23 +23,31 @@ title = "Malice Runtime Configuration"
   pass = "password"
 
 [database]
-  name = "malice-elk"
-  image = "blacktop/elastic-stack:malice"
-  server = "localhost" # This is for running on Docker for Mac installations.
-  ports = [ 9200 ]
-  timeout = 10
+  name = "malice-elastic"
+  image = "malice/elasticsearch:5.5"
+  server = "localhost"
+  ports = [9200]
+  timeout = 20
+  enabled = true
+
+[ui]
+  name = "malice-kibana"
+  image = "malice/kibana:5.5"
+  server = "localhost"
+  ports = [443]
   enabled = true
 
 [environment]
   run = "development"
-  # run = "production"
 
 [docker]
   machine-name = "malice"
   endpoint = "tcp://localhost:2376"
-  binds = "malice:/malware:ro"
-  links = "malice-elk:elastic"
   timeout = 120
+  binds = "malice:/malware:ro"
+  links = "malice-elastic:elasticsearch"
+  cpu = 500000000
+  memory = 524288000
 
 [logger]
   filename = "malice.log"

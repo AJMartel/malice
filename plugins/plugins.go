@@ -34,6 +34,10 @@ func (plugin Plugin) StartPlugin(docker *client.Docker, arg string, scanID strin
 	env := plugin.getPluginEnv()
 
 	env = append(env, "MALICE_SCANID="+scanID)
+	log.WithFields(log.Fields{
+		"name": plugin.Name,
+		"env":  config.Conf.Environment.Run,
+	}).Debug("env: ", env)
 	// env = append(env, "MALICE_ELASTICSEARCH="+utils.Getopt("MALICE_ELASTICSEARCH", getDbAddr()))
 
 	contJSON, err := container.Start(
@@ -72,6 +76,9 @@ func getDbAddr() string {
 func (plugin Plugin) buildCmd(args string, logs bool) strslice.StrSlice {
 
 	cmdStr := strslice.StrSlice{}
+	if plugin.APIKey != "" {
+		cmdStr = append(cmdStr, "--api", plugin.APIKey)
+	}
 	if logs {
 		cmdStr = append(cmdStr, "-t")
 	}
@@ -107,7 +114,9 @@ func RunIntelPlugins(docker *client.Docker, hash string, scanID string, logs boo
 func (plugin *Plugin) getPluginEnv() []string {
 	var env []string
 	for _, pluginEnv := range plugin.Env {
-		env = append(env, fmt.Sprintf("%s=%s", pluginEnv, os.Getenv(pluginEnv)))
+		if os.Getenv(pluginEnv) != "" {
+			env = append(env, fmt.Sprintf("%s=%s", pluginEnv, os.Getenv(pluginEnv)))
+		}
 	}
 	return env
 }
@@ -149,7 +158,7 @@ func InstallPlugin(plugin *Plugin) (err error) {
 	// fmt.Println(buf.String())
 
 	// open plugin config file
-	configPath := path.Join(maldirs.GetBaseDir(), "./plugins.toml")
+	configPath := path.Join(maldirs.GetPluginsDir(), "./plugins.toml")
 	f, err := os.OpenFile(configPath, os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		panic(err)
@@ -176,7 +185,7 @@ func DeletePlugin(name string) error {
 	er.CheckError(toml.NewEncoder(buf).Encode(Plugs))
 
 	// open plugin config file
-	configPath := path.Join(maldirs.GetBaseDir(), "./plugins.toml")
+	configPath := path.Join(maldirs.GetPluginsDir(), "./plugins.toml")
 	err := ioutil.WriteFile(configPath, buf.Bytes(), 0644)
 	return err
 }
@@ -201,13 +210,13 @@ func (plugin Plugin) UpdatePluginFromRepository(docker *client.Docker) {
 
 	log.Info("[Building Plugin from Source] ===> ", plugin.Name)
 
-	var buildArgs map[string]string
+	var buildArgs map[string]*string
 	var quiet = false
 
 	tags := []string{"malice/" + plugin.Name + ":latest"}
 
 	if config.Conf.Proxy.Enable {
-		buildArgs = runconfigopts.ConvertKVStringsToMap([]string{
+		buildArgs = runconfigopts.ConvertKVStringsToMapWithNil([]string{
 			"HTTP_PROXY=" + config.Conf.Proxy.HTTP,
 			"HTTPS_PROXY=" + config.Conf.Proxy.HTTPS,
 		})
